@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Online Image Converter - JPG, PNG, WEBP Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        /* Custom Tailwind Configuration for smooth buttons and shadow */
+        .shadow-neon {
+            box-shadow: 0 10px 15px -3px rgba(167, 139, 250, 0.5), 0 4px 6px -2px rgba(167, 139, 250, 0.3);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto bg-white rounded-3xl p-6 md:p-12 shadow-xl">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-violet-700 mb-2">
+                Easy Image Converter (फोटो बदलो)
+            </h1>
+            <p class="text-lg text-gray-500">
+                JPG, PNG, aur WEBP formats ko aasaani se convert karein. Fast aur Free!
+            </p>
+        </header>
+
+        <!-- Main Conversion Area -->
+        <div class="space-y-6">
+            
+            <!-- 1. File Upload/Drop Zone -->
+            <div id="dropZone" class="border-4 border-dashed border-violet-300 bg-violet-50 rounded-xl p-8 text-center cursor-pointer hover:bg-violet-100 transition duration-200" onclick="document.getElementById('fileInput').click()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-violet-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 014 4.973V14a2 2 0 01-2 2h-6l-3-3m0 0L6 14m3-3V4" />
+                </svg>
+                <p class="text-xl font-semibold text-violet-700">Photo Upload Karne Ke Liye Click Karein</p>
+                <p id="fileNameDisplay" class="text-sm text-gray-500 mt-1">Ya drag karke yahan chhodein. (Max size 10MB)</p>
+                <input type="file" id="fileInput" accept="image/jpeg, image/png, image/webp" class="hidden" onchange="handleFileSelect(event)">
+            </div>
+            
+            <!-- Hidden Canvas for Conversion -->
+            <canvas id="conversionCanvas" class="hidden"></canvas>
+            
+            <!-- 2. Options and Action -->
+            <div id="optionsSection" class="bg-gray-100 p-6 rounded-xl space-y-4 hidden">
+                <p class="text-lg font-bold text-gray-700">1. Target Format Chunein:</p>
+                
+                <div class="flex flex-wrap gap-4 justify-center">
+                    <label class="flex items-center space-x-2 bg-white p-3 rounded-lg shadow cursor-pointer hover:shadow-lg transition">
+                        <input type="radio" name="outputFormat" value="image/jpeg" checked class="text-violet-600 focus:ring-violet-500">
+                        <span class="font-medium text-gray-700">JPG</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-white p-3 rounded-lg shadow cursor-pointer hover:shadow-lg transition">
+                        <input type="radio" name="outputFormat" value="image/png" class="text-violet-600 focus:ring-violet-500">
+                        <span class="font-medium text-gray-700">PNG</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-white p-3 rounded-lg shadow cursor-pointer hover:shadow-lg transition">
+                        <input type="radio" name="outputFormat" value="image/webp" class="text-violet-600 focus:ring-violet-500">
+                        <span class="font-medium text-gray-700">WEBP</span>
+                    </label>
+                </div>
+
+                <button id="convertButton" onclick="convertAndDownload()" class="w-full bg-violet-600 text-white font-extrabold text-xl py-4 rounded-xl hover:bg-violet-700 transition duration-300 shadow-neon">
+                    Convert aur Download Karein
+                </button>
+                <p id="statusMessage" class="text-center text-sm text-red-500 min-h-[1.5rem]"></p>
+            </div>
+            
+        </div>
+        <!-- End Main Conversion Area -->
+
+        <!-- Informational Content for AdSense -->
+        <div class="mt-12 pt-8 border-t border-gray-200">
+            <h2 class="text-2xl font-bold text-gray-700 mb-4">Image Converter Tools Ki Zaroorat Kyun?</h2>
+            <p class="text-gray-600 leading-relaxed">
+                Online Image Converters bahut zaruri hote hain. Jab aap koi photo social media par share karte hain, ya apni website ke liye use karte hain, toh sahi format ka hona bahut zaroori hai. **JPG** file choti hoti hai, **PNG** high-quality (aur transparent background) ke liye achha hai, aur **WEBP** sabse naya aur fastest web format hai. Hamara free tool aapko bina kisi quality loss ke in formats mein badlaav karne deta hai. Hamari service fast hai, aur hum aapki files ko apne server par **save nahi** karte.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('conversionCanvas');
+        const ctx = canvas.getContext('2d');
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const optionsSection = document.getElementById('optionsSection');
+        const statusMessage = document.getElementById('statusMessage');
+        let uploadedFile = null;
+
+        // --- Drag and Drop Handlers ---
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('border-violet-600', 'bg-violet-100'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('border-violet-600', 'bg-violet-100'), false);
+        });
+
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function preventDefaults (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function handleDrop(e) {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            if (files.length > 0) {
+                fileInput.files = files; // Assign dropped files to the input element
+                handleFileSelect({ target: { files: files } });
+            }
+        }
+        // --- End Drag and Drop Handlers ---
+
+        function handleFileSelect(event) {
+            statusMessage.textContent = '';
+            const files = event.target.files;
+            if (files.length === 0) return;
+
+            const file = files[0];
+            
+            // Check file type
+            if (!file.type.startsWith('image/')) {
+                statusMessage.textContent = 'Sirf Images (JPG, PNG, WEBP) hi upload karein.';
+                fileNameDisplay.textContent = 'Kripya sahi file chunein.';
+                optionsSection.classList.add('hidden');
+                return;
+            }
+
+            // Check file size (Max 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                statusMessage.textContent = 'File size 10MB se zyada hai. Choti file use karein.';
+                fileNameDisplay.textContent = 'File ka size bahut bada hai.';
+                optionsSection.classList.add('hidden');
+                return;
+            }
+
+            uploadedFile = file;
+            fileNameDisplay.textContent = `Chuni hui file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            optionsSection.classList.remove('hidden');
+            
+            // Load image for canvas processing
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    statusMessage.textContent = 'Photo load ho chuki hai. Format chunein.';
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function convertAndDownload() {
+            if (!uploadedFile) {
+                statusMessage.textContent = 'Kripya pehle photo upload karein.';
+                return;
+            }
+
+            const formatRadio = document.querySelector('input[name="outputFormat"]:checked');
+            if (!formatRadio) return; 
+
+            const mimeType = formatRadio.value;
+            const extension = mimeType.split('/')[1];
+            
+            statusMessage.textContent = `Conversion shuru ho rahi hai...`;
+            
+            try {
+                // Conversion happens here using canvas API
+                const dataURL = canvas.toDataURL(mimeType, 0.9); // 0.9 for JPEG quality
+
+                // Create a temporary link for download
+                const a = document.createElement('a');
+                a.href = dataURL;
+                
+                // Construct new filename
+                const originalName = uploadedFile.name.substring(0, uploadedFile.name.lastIndexOf('.')) || 'converted_image';
+                a.download = `${originalName}.${extension}`;
+                
+                // Trigger download
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                statusMessage.textContent = `Photo safaltapoorvak (${extension.toUpperCase()} format) mein download ho chuki hai!`;
+            } catch (error) {
+                statusMessage.textContent = `Conversion mein galti hui: ${error.message}. Kripya dobara try karein.`;
+                console.error("Conversion Error:", error);
+            }
+        }
+        
+        // Initial setup on load
+        window.onload = function() {
+            // Setup for mobile touch experience
+            dropZone.addEventListener('touchstart', () => fileInput.click(), false);
+        };
+    </script>
+</body>
+</html>
