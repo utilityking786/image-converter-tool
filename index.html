@@ -299,3 +299,320 @@
     </script>
 </body>
 </html>
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  Camera, 
+  Calculator, 
+  FileImage, 
+  FileText, 
+  Download, 
+  RefreshCcw, 
+  TrendingUp, 
+  ShieldCheck,
+  Building2,
+  Trash2,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react';
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('converter');
+  
+  // Image Converter State
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // Salary Calculator State
+  const [basicSalary, setBasicSalary] = useState('');
+  const [allowances, setAllowances] = useState('');
+  const [nationality, setNationality] = useState('expat'); // expat vs bahraini
+  const [calculation, setCalculation] = useState(null);
+
+  // --- Image Converter Functions ---
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedImage(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const downloadProcessedImage = (format) => {
+    setIsProcessing(true);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      
+      const mimeType = format === 'pdf' ? 'image/jpeg' : `image/${format}`;
+      const dataUrl = canvas.toDataURL(mimeType, 0.9);
+      
+      const link = document.createElement('a');
+      link.download = `Bahrain_Doc_${Date.now()}.${format}`;
+      link.href = dataUrl;
+      link.click();
+      
+      setTimeout(() => setIsProcessing(false), 800);
+    };
+    img.src = previewUrl;
+  };
+
+  const clearImage = () => {
+    setSelectedImage(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // --- Calculator Logic (Bahrain GOSI Rules) ---
+  const calculateSalary = () => {
+    const basic = parseFloat(basicSalary) || 0;
+    const allow = parseFloat(allowances) || 0;
+    const totalGross = basic + allow;
+
+    // GOSI Rules: Expat = 1% (Unemployment), Bahraini = 7% (Pension) + 1% (Unemployment)
+    // Capped at 4000 BHD basic for GOSI calculation usually
+    const gosiBase = Math.min(basic, 4000);
+    let gosiDeduction = 0;
+    
+    if (nationality === 'bahraini') {
+      gosiDeduction = gosiBase * 0.08; // 7% Pension + 1% Unemployment
+    } else {
+      gosiDeduction = gosiBase * 0.01; // 1% Unemployment
+    }
+
+    setCalculation({
+      gross: totalGross,
+      gosi: gosiDeduction.toFixed(3),
+      net: (totalGross - gosiDeduction).toFixed(3)
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      {/* Navigation Header */}
+      <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="bg-red-600 p-1.5 rounded-lg text-white">
+              <Building2 size={20} />
+            </div>
+            <span className="font-bold text-xl tracking-tight">BH<span className="text-red-600 font-black">PORTAL</span></span>
+          </div>
+          <div className="flex bg-slate-100 p-1 rounded-xl">
+            <button 
+              onClick={() => setActiveTab('converter')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-bold transition ${activeTab === 'converter' ? 'bg-white shadow-sm text-red-600' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Converter
+            </button>
+            <button 
+              onClick={() => setActiveTab('calculator')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-bold transition ${activeTab === 'calculator' ? 'bg-white shadow-sm text-red-600' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Calculator
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <main className="max-w-4xl mx-auto p-4 md:p-8">
+        
+        {/* IMAGE CONVERTER SECTION */}
+        {activeTab === 'converter' && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-black text-slate-900">Document Converter</h1>
+              <p className="text-slate-500 font-medium">Convert Passport/CV photos to PDF or JPG for Bahrain Job Portals</p>
+            </div>
+
+            {!previewUrl ? (
+              <div 
+                onClick={() => fileInputRef.current.click()}
+                className="border-4 border-dashed border-slate-200 bg-white rounded-[2.5rem] p-16 text-center cursor-pointer hover:border-red-400 hover:bg-red-50/30 transition-all group"
+              >
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleImageUpload} 
+                  className="hidden" 
+                  accept="image/*"
+                />
+                <div className="w-20 h-20 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition duration-300">
+                  <Camera className="text-red-600" size={40} />
+                </div>
+                <h3 className="text-2xl font-black text-slate-800">Upload Document Image</h3>
+                <p className="text-slate-400 mt-2 font-medium">Click to pick a photo from your phone or gallery</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 overflow-hidden border border-slate-100">
+                <div className="p-6 md:p-10 flex flex-col md:flex-row gap-10">
+                  <div className="w-full md:w-1/2">
+                    <div className="relative rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 aspect-[3/4]">
+                      <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
+                      <button 
+                        onClick={clearImage}
+                        className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-2 rounded-full text-red-600 shadow-lg hover:bg-red-600 hover:text-white transition"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="w-full md:w-1/2 flex flex-col justify-center space-y-8">
+                    <div>
+                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Export Settings</h4>
+                      <div className="grid grid-cols-1 gap-4">
+                        <button 
+                          onClick={() => downloadProcessedImage('pdf')}
+                          disabled={isProcessing}
+                          className="flex items-center justify-center gap-3 bg-red-600 text-white p-4 rounded-2xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200 disabled:opacity-50"
+                        >
+                          {isProcessing ? <RefreshCcw className="animate-spin" /> : <FileText size={22} />}
+                          Save as PDF Document
+                        </button>
+                        <button 
+                          onClick={() => downloadProcessedImage('jpg')}
+                          disabled={isProcessing}
+                          className="flex items-center justify-center gap-3 bg-slate-900 text-white p-4 rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-300 disabled:opacity-50"
+                        >
+                          <FileImage size={22} />
+                          Download high-res JPG
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="p-4 bg-amber-50 rounded-2xl flex gap-3 items-start border border-amber-100">
+                      <AlertCircle className="text-amber-600 shrink-0" size={20} />
+                      <p className="text-xs text-amber-800 font-medium">
+                        Ensure the image is clear and all text on the document is readable before uploading to official portals like LMRA.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* SALARY CALCULATOR SECTION */}
+        {activeTab === 'calculator' && (
+          <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-black text-slate-900">Bahrain Salary Calculator</h1>
+              <p className="text-slate-500 font-medium">Estimate your Net Pay after GOSI deductions</p>
+            </div>
+
+            <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 p-8 md:p-10 border border-slate-100">
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Nationality</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      onClick={() => setNationality('expat')}
+                      className={`p-3 rounded-xl font-bold border-2 transition ${nationality === 'expat' ? 'border-red-600 bg-red-50 text-red-600' : 'border-slate-100 text-slate-400'}`}
+                    >
+                      Expatriate
+                    </button>
+                    <button 
+                      onClick={() => setNationality('bahraini')}
+                      className={`p-3 rounded-xl font-bold border-2 transition ${nationality === 'bahraini' ? 'border-red-600 bg-red-50 text-red-600' : 'border-slate-100 text-slate-400'}`}
+                    >
+                      Bahraini
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Basic Salary (BHD)</label>
+                  <input 
+                    type="number"
+                    value={basicSalary}
+                    onChange={(e) => setBasicSalary(e.target.value)}
+                    placeholder="e.g. 450"
+                    className="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-600/20 focus:border-red-600 transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Allowances (Housing, Transport, etc)</label>
+                  <input 
+                    type="number"
+                    value={allowances}
+                    onChange={(e) => setAllowances(e.target.value)}
+                    placeholder="e.g. 100"
+                    className="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-600/20 focus:border-red-600 transition"
+                  />
+                </div>
+
+                <button 
+                  onClick={calculateSalary}
+                  className="w-full bg-slate-900 text-white p-5 rounded-2xl font-black text-lg hover:bg-slate-800 transition shadow-xl"
+                >
+                  CALCULATE NET PAY
+                </button>
+
+                {calculation && (
+                  <div className="mt-8 pt-8 border-t border-slate-100 space-y-4">
+                    <div className="flex justify-between items-center text-slate-500 font-medium">
+                      <span>Gross Salary</span>
+                      <span>{calculation.gross} BHD</span>
+                    </div>
+                    <div className="flex justify-between items-center text-red-600 font-bold">
+                      <span className="flex items-center gap-1">
+                        GOSI Deduction 
+                        <div className="group relative">
+                          <AlertCircle size={14} className="cursor-help text-slate-300" />
+                          <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-slate-800 text-white text-[10px] rounded w-48 text-center">
+                            {nationality === 'expat' ? '1% Social Insurance (Unemployment)' : '7% Pension Contribution + 1% Unemployment'}
+                          </div>
+                        </div>
+                      </span>
+                      <span>- {calculation.gosi} BHD</span>
+                    </div>
+                    <div className="flex justify-between items-center p-5 bg-green-50 rounded-2xl border border-green-100">
+                      <span className="font-bold text-green-800 text-lg">Monthly Take-Home</span>
+                      <span className="font-black text-green-800 text-2xl">{calculation.net} BHD</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white p-5 rounded-3xl border border-slate-200 flex items-center gap-4">
+                <div className="bg-blue-50 p-3 rounded-2xl text-blue-600">
+                  <ShieldCheck size={24} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Tax Status</p>
+                  <p className="text-sm font-bold text-slate-700">0% Income Tax in BH</p>
+                </div>
+              </div>
+              <div className="bg-white p-5 rounded-3xl border border-slate-200 flex items-center gap-4">
+                <div className="bg-green-50 p-3 rounded-2xl text-green-600">
+                  <TrendingUp size={24} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Increment</p>
+                  <p className="text-sm font-bold text-slate-700">Annual Wage Growth Info</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      <footer className="mt-20 py-10 text-center border-t border-slate-200">
+        <p className="text-slate-400 text-sm font-bold tracking-tight">
+          Made for Bahrain Job Seekers • Manama 2024
+        </p>
+      </footer>
+    </div>
+  );
+}
